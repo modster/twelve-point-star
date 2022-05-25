@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <title>Babylon.js sample code</title>
+
+        <!-- Babylon.js -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+        <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+        <script src="https://preview.babylonjs.com/ammo.js"></script>
+        <script src="https://preview.babylonjs.com/cannon.js"></script>
+        <script src="https://preview.babylonjs.com/Oimo.js"></script>
+        <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+        <script src="https://preview.babylonjs.com/babylon.js"></script>
+        <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+        <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+        <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+        <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+        <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+        <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+    </head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+        var canvas = document.getElementById("renderCanvas");
+
+        var startRenderLoop = function (engine, canvas) {
+            engine.runRenderLoop(function () {
+                if (sceneToRender && sceneToRender.activeCamera) {
+                    sceneToRender.render();
+                }
+            });
+        }
+
+        var engine = null;
+        var scene = null;
+        var sceneToRender = null;
+        var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
+        /*********** Create Point inside Mesh ******************/
+        BABYLON.Mesh.prototype.createInnerPoints = function(pointsNb) {
+        	var boundInfo = this.getBoundingInfo();
+        	var diameter = 2 * boundInfo.boundingSphere.radius;
+        	this.updateFacetData();
+        
+        	var positions = this.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+        	var indices = this.getIndices();
+        	
+        	var point = BABYLON.Vector3.Zero();
+        	var points = [];
+        	var directions = [];
+        	
+        	var randX = 0;
+        	var randY = 0;
+        	var randZ = 0
+        	
+        	var index = 0;
+        	var id0 = 0;
+        	var id1 = 0; 
+        	var id2 = 0;
+        	var v0X = 0;
+        	var v0Y = 0;
+        	var v0Z = 0;
+        	var v1X = 0;
+        	var v1Y = 0
+        	var v1Z = 0;
+        	var v2X = 0;
+        	var v2Y = 0;
+        	var v2Z = 0;
+        	var vertex0 = BABYLON.Vector3.Zero();
+        	var vertex1 = BABYLON.Vector3.Zero();
+        	var vertex2 = BABYLON.Vector3.Zero();
+        	var vec0 = BABYLON.Vector3.Zero();
+        	var vec1 = BABYLON.Vector3.Zero();
+        		
+        	var lamda = 0;	
+        	var mu = 0;
+        	var norm = BABYLON.Vector3.Zero();
+        	var tang = BABYLON.Vector3.Zero();
+        	var biNorm = BABYLON.Vector3.Zero();
+        	var angle = 0;
+        	var facetPlaneVec = BABYLON.Vector3.Zero();
+        
+        	var gap = 0;
+        	var distance = 0;
+        	var ray = new BABYLON.Ray(BABYLON.Vector3.Zero(), BABYLON.AxisX);
+        	var pickInfo;
+        	var facetPoint = BABYLON.Vector3.Zero();
+        	var direction = BABYLON.Vector3.Zero();
+        	var particleDirection = BABYLON.Vector3.Zero();
+        	var particleDistance = 0;
+        	var testPoint = BABYLON.Vector3.Zero();
+        
+        	for(var p = 0; p <pointsNb; p++) {			
+        		index = Math.floor(BABYLON.Scalar.RandomRange(0, indices.length / 3));		
+        		id0 = indices[3 * index];
+        		id1 = indices[3 * index + 1]; 
+        		id2 = indices[3 * index + 2];
+        		v0X = positions[3 * id0];
+        		v0Y = positions[3 * id0 + 1];
+        		v0Z = positions[3 * id0 + 2];
+        		v1X = positions[3 * id1];
+        		v1Y = positions[3 * id1 + 1];
+        		v1Z = positions[3 * id1 + 2];
+        		v2X = positions[3 * id2];
+        		v2Y = positions[3 * id2 + 1];
+        		v2Z = positions[3 * id2 + 2];
+        		vertex0.set(v0X, v0Y, v0Z);
+        		vertex1.set(v1X, v1Y, v1Z);
+        		vertex2.set(v2X, v2Y, v2Z);
+        		vertex1.subtractToRef(vertex0, vec0);
+        		vertex2.subtractToRef(vertex1, vec1);
+        		
+        		norm = this.getFacetNormal(index).normalize().scale(-1);	
+        		tang = vec0.clone().normalize();
+        		biNorm = BABYLON.Vector3.Cross(norm, tang);
+        		angle = BABYLON.Scalar.RandomRange(0, 2 * Math.PI);
+        		facetPlaneVec = tang.scale(Math.cos(angle)).add(biNorm.scale(Math.sin(angle)));
+        		angle = BABYLON.Scalar.RandomRange(0.1, Math.PI);
+        		direction = facetPlaneVec.scale(Math.cos(angle)).add(norm.scale(Math.sin(angle)));
+        		
+        		//form a point inside the facet v0, v1, v2;
+        		lamda = BABYLON.Scalar.RandomRange(0, 1);	
+        		mu = BABYLON.Scalar.RandomRange(0, 1);
+        		facetPoint = vertex0.add(vec0.scale(lamda)).add(vec1.scale(lamda * mu));
+        
+        		gap = 0;
+        		distance = 0;
+        		pickInfo;	
+        		ray.origin = facetPoint;
+        		ray.direction = direction;
+        		ray.length = diameter;	
+        		pickInfo = ray.intersectsMesh(this);	
+        		if (pickInfo.hit) {			
+        			distance = pickInfo.pickedPoint.subtract(facetPoint).length();
+        			gap = BABYLON.Scalar.RandomRange(0, 1) * distance;
+        			point = facetPoint.add(direction.scale(gap));
+        		}
+        		else {
+        			point.set(0, 0, 0);
+        		}
+        		points.push(point);	
+        	}
+        	
+        	return points;
+        }
+        
+        var createScene = function () {
+        	var scene = new BABYLON.Scene(engine);
+        
+        	var camera = new BABYLON.ArcRotateCamera("Camera", 3 * Math.PI / 2, Math.PI / 8, 15, BABYLON.Vector3.Zero(), scene);
+        
+        	camera.attachControl(canvas, true);
+        
+        	var light = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
+        	var pl = new BABYLON.PointLight("pl", new BABYLON.Vector3(0, 0, 0), scene);
+        	pl.diffuse = new BABYLON.Color3(1, 1, 1);
+        	pl.specular = new BABYLON.Color3(0.5, 0.2, 0.2);
+        	pl.intensity = 0.75;
+        
+            
+        	/***** Create 12 Pointed Start ***********************************/
+        	var dodecahedron = {
+                        vertex: [[0, 0, 1.070466], [0.7136442, 0, 0.7978784], [-0.3568221, 0.618034, 0.7978784], [-0.3568221, -0.618034, 0.7978784], [0.7978784, 0.618034, 0.3568221], [0.7978784, -0.618034, 0.3568221], [-0.9341724, 0.381966, 0.3568221], [0.1362939, 1, 0.3568221], [0.1362939, -1, 0.3568221], [-0.9341724, -0.381966, 0.3568221], [0.9341724, 0.381966, -0.3568221], [0.9341724, -0.381966, -0.3568221], [-0.7978784, 0.618034, -0.3568221], [-0.1362939, 1, -0.3568221], [-0.1362939, -1, -0.3568221], [-0.7978784, -0.618034, -0.3568221], [0.3568221, 0.618034, -0.7978784], [0.3568221, -0.618034, -0.7978784], [-0.7136442, 0, -0.7978784], [0, 0, -1.070466]],
+                        face: [[0, 1, 4, 7, 2], [0, 2, 6, 9, 3], [0, 3, 8, 5, 1], [1, 5, 11, 10, 4], [2, 7, 13, 12, 6], [3, 9, 15, 14, 8], [4, 10, 16, 13, 7], [5, 8, 14, 17, 11], [6, 12, 18, 15, 9], [10, 11, 17, 19, 16], [12, 13, 16, 19, 18], [14, 15, 18, 19, 17]]
+                    };
+        
+            var createTwelvePointedStar = function(len) {
+                var face = [];
+                var pointIndex = 0;
+                var centerX = 0;
+                var centerY = 0;
+                var centerZ = 0;
+                var positions = [];
+                var indices = [];
+                var vec1 = BABYLON.Vector3.Zero();
+                var vec2 = BABYLON.Vector3.Zero();  
+                var norm
+                var nbVertices = dodecahedron.vertex.length
+                for(var v = 0; v < nbVertices; v++) {
+                    positions = positions.concat(dodecahedron.vertex[v])
+                }
+                for(var f = 0;  f < 12; f++) {
+                    face = dodecahedron.face[f];           
+                    centerX = 0;
+                    centerY = 0;
+                    centerZ = 0;
+                    vec1.set(dodecahedron.vertex[face[1]][0] - dodecahedron.vertex[face[0]][0], dodecahedron.vertex[face[1]][1] - dodecahedron.vertex[face[0]][1], dodecahedron.vertex[face[1]][2] - dodecahedron.vertex[face[0]][2]);
+                    vec2.set(dodecahedron.vertex[face[2]][0] - dodecahedron.vertex[face[1]][0], dodecahedron.vertex[face[2]][1] - dodecahedron.vertex[face[1]][1], dodecahedron.vertex[face[2]][2] - dodecahedron.vertex[face[1]][2]);           
+                    norm = BABYLON.Vector3.Cross(vec1, vec2).normalize();           
+                    for(var v = 0; v < 5; v++) {
+                        centerX += dodecahedron.vertex[face[v]][0];
+                        centerY += dodecahedron.vertex[face[v]][1];
+                        centerZ += dodecahedron.vertex[face[v]][2];
+                    }
+                    pointIndex = 1 * (nbVertices + f);            
+                    positions.push(centerX/6 + len * norm.x, centerY/6 + len * norm.y, centerZ/6 + len * norm.z);
+                    for(var v = 0; v < 5; v++) {
+                        indices.push(face[v], pointIndex, face[(v + 1) % 5]);                
+                    }                        
+                }
+                var vertexData = new BABYLON.VertexData();
+        
+                vertexData.positions = positions;
+                vertexData.indices = indices; 
+        
+                var normals = [];
+                BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+        
+                vertexData.normals = normals; 
+        
+                var mesh = new BABYLON.Mesh("star", scene);
+                vertexData.applyToMesh(mesh);
+        
+                return mesh;       
+            }
+        
+        	/****** Mesh To Contain SPS ************/
+            var tps = createTwelvePointedStar(3);
+            tps.material = new BABYLON.StandardMaterial("", scene);
+            tps.material.wireframe = true;
+        
+            nbParticles = 5000;
+            var points = tps.createInnerPoints(nbParticles);
+            var sphere = BABYLON.MeshBuilder.CreateSphere("point", {diameter: 0.05, segments:6}, scene);
+            for(var p = 0; p < nbParticles; p++) {
+                sphere.createInstance("");
+                sphere.position = points[p].clone();
+            }
+        	return scene;
+        }
+                window.initFunction = async function() {
+                    
+                    
+                    var asyncEngineCreation = async function() {
+                        try {
+                        return createDefaultEngine();
+                        } catch(e) {
+                        console.log("the available createEngine function failed. Creating the default engine instead");
+                        return createDefaultEngine();
+                        }
+                    }
+
+                    window.engine = await asyncEngineCreation();
+        if (!engine) throw 'engine should not be null.';
+        startRenderLoop(engine, canvas);
+        window.scene = createScene();};
+        initFunction().then(() => {sceneToRender = scene                    
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+</body>
+</html>
